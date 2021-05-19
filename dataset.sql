@@ -1,3 +1,6 @@
+SET autocommit = 0;
+START TRANSACTION;
+
 INSERT INTO `ocpizza`.`address`(`number`, `street_name`, `city`, `zip_code`) 
 VALUES 
        (3,"rue de la pizzeria 1","Lyon","69003"),
@@ -9,8 +12,10 @@ VALUES ("pdv1",1),
        ("pdv2",2),
        ("pdv3",3);
        
-INSERT INTO `ocpizza`.`user`(`sex`, `last_name`, `first_name`, `email`, `phone_number`, `pizzeria_id`) 
-VALUES ("F","Machine","Léa","leamachine@ocp.com","0104070205",1),("M","Machin","Fred","fredmachin@ocp.com","0104070206",2),("F","Bidul","Pauline","paulinebidule@ocp.com","0104070207",3);       
+INSERT INTO `ocpizza`.`user`(`sex`, `last_name`, `first_name`, `phone_number`, `pizzeria_id`) 
+VALUES ("F","Machine","Léa","0104070205",1),("M","Machin","Fred","0104070206",2),("F","Bidul","Pauline","0104070207",3);       
+
+INSERT INTO `ocpizza`.`email`(`email`, `user_id`) VALUES ("leamachine@ocp.com", 1), ("fredmachin@ocp.com", 2), ("paulinebidule@ocp.com", 3);
        
 INSERT INTO `ocpizza`.`address`(`number`, `street_name`, `city`, `zip_code`) 
 VALUES 
@@ -25,10 +30,10 @@ INSERT INTO `ocpizza`.`role`(`name`) VALUES ("client"),("admin"),("cashier"),("p
 INSERT INTO `ocpizza`.`user_role`(`user_id`, `role_id`) VALUES (1,2),(2,2),(3,2);
 
 INSERT INTO `ocpizza`.`product`(`name`, `price`, `recipe`) 
-VALUES ("Margherita", '8.5', 'Recette de la margherita'),
-       ("Reine", '11.99', 'Recette de la Reine'),
-       ("Sicilienne", '9.5', 'Recette de la Sicilienne'),
-       ("Napolitaine", '9.99', 'Recette de la Napolitaine');
+VALUES ("Margherita", "8.5", "Recette de la margherita"),
+       ("Reine", "11.99", "Recette de la Reine"),
+       ("Sicilienne", "9.5", "Recette de la Sicilienne"),
+       ("Napolitaine", "9.99", "Recette de la Napolitaine");
 
 INSERT INTO `ocpizza`.`ingredient`(`name`)
 VALUES ("pate à pizza"),("sauce tomate"),("jambon"),("mozzarella"),
@@ -50,13 +55,21 @@ VALUES (1,1,100),(1,2,200),(1,3,100),(1,4,200),(1,5,100),(1,6,100),(1,7,125),
        (2,1,100),(2,2,200),(2,3,100),(2,4,200),(2,5,100),(2,6,100),(2,7,125),
        (3,1,100),(3,2,200),(3,3,100),(3,4,200),(3,5,100),(3,6,100),(3,7,125);
 
-INSERT INTO `ocpizza`.`status`(`name`) VALUES ("Crée"),("En attente"),("En préparation"),("A livrer"), ("En livraison"), ("Livrée");
+INSERT INTO `ocpizza`.`status`(`name`) VALUES ("Créée"), ("En attente"), ("En préparation"), ("A remettre sur place"), ("A livrer"), ("En livraison"), ("Livrée");
+
+COMMIT;
+
+-- ------------------------------------------------------------------------------
+-- Create procedures
+-- ------------------------------------------------------------------------------
 
 DELIMITER $$ 
-CREATE PROCEDURE p_create_order(p_user_id int, p_pizzeria_id int, p_status_id int, p_is_command_ready tinyint)
+CREATE PROCEDURE p_create_order(p_user_id int, p_pizzeria_id tinyint, p_is_on_site_or_online tinyint)
 BEGIN
-insert into command (user_id, status_id, pizzeria_id, is_command_ready)
-values (p_user_id, p_status_id, p_pizzeria_id, p_is_command_ready);
+
+insert into ocpizza.command (user_id, pizzeria_id) values (p_user_id, p_pizzeria_id);
+update command set is_on_site_or_online = p_is_on_site_or_online, status_id = 1 where user_id = p_user_id and status_id < 2;
+
 END $$
 DELIMITER ;
 
@@ -65,14 +78,15 @@ DELIMITER $$
 CREATE PROCEDURE p_create_user (p_sex char(1), p_last_name varchar(100), p_first_name varchar(100), p_email varchar(255), p_phone_num varchar(10), p_pizzeria_id int, p_role_id int)
 BEGIN
 
-INSERT INTO `ocpizza`.`user`(`sex`, `last_name`, `first_name`, `email`, `phone_number`, `pizzeria_id`) 
-VALUES (p_sex, p_last_name, p_first_name, p_email, p_phone_num, p_pizzeria_id);
+INSERT INTO `ocpizza`.`user`(`sex`, `last_name`, `first_name`, `phone_number`, `pizzeria_id`) 
+VALUES (p_sex, p_last_name, p_first_name, p_phone_num, p_pizzeria_id);
+
+INSERT INTO `ocpizza`.`email`(`email`, `user_id`) VALUES (p_email, (SELECT max(user.id) from user));
 
 INSERT INTO `ocpizza`.`user_role`(`user_id`, `role_id`) 
 values ((SELECT max(user.id) from user), p_role_id);
 
--- create a first empty command per user (even the staff)
-CALL p_create_order((SELECT max(user.id) from user), p_pizzeria_id, 1, 0);
+CALL p_create_order((SELECT max(user.id) from user), p_pizzeria_id, (select if(p_role_id = 1, 1, 0)));
 
 END $$
 DELIMITER ; 
@@ -90,7 +104,7 @@ join address a;
 END $$
 DELIMITER ; 
 
-CALL p_create_user("M","Poumtchak","Simbad","simbad@ocp.com","0605040303",1,3);
+CALL p_create_user("M","McCashier","Simbad","mc_cashier@ocp.com","0605040303",1,3);
 CALL p_create_address(7,"chemin de la route","Lyon","69008");
 
 CALL p_create_user("M", "Cuisto","Jimi","cuisto@ocp.com","0605040304",1,4);
@@ -100,34 +114,37 @@ CALL p_create_user("M", "Deroux","Ben","deroux@ocp.com","0605040305",1,5);
 CALL p_create_address(77,"route du banco","Lyon","69007");
 
 DELIMITER $$ 
-CREATE PROCEDURE p_fill_order(p_user_id int, p_product_id int, p_quantity int, p_is_command_ready tinyint)
+CREATE PROCEDURE p_fill_order(p_user_id int, p_product_id int, p_quantity int, p_is_finished boolean)
 BEGIN
 update command 
-join (select max(id) mx_id from command where user_id = p_user_id and is_command_ready = 2) a
+join (select max(id) mx_id from command where user_id = p_user_id) a
 on a.mx_id = command.id
 set current_datetime = now();
 
-IF (p_is_command_ready = 0) THEN
+IF p_is_finished = True THEN
+
 insert into command_has_product (product_id, command_id, quantity)
 values (p_product_id,(select max(id) from command where user_id = p_user_id), p_quantity);
+update command set current_datetime = now(), status_id = 2 where user_id = p_user_id;
 
-ELSEIF (p_is_command_ready = 1) THEN
+update command set delivery_address = (
+select if((select role.id from role join user_role ur on ur.role_id = role.id join user on user.id = ur.user_id where user.id = p_user_id) = 3, 
+concat(user.first_name, ' ', user.last_name, ' ', address_piz.number, ' ', address_piz.street_name, ', ', address_piz.zip_code, ', ', address_piz.city),
+concat(user.first_name, ' ', user.last_name, ' ', address_cust.number, ' ', address_cust.street_name, ', ', address_cust.zip_code, ', ', address_cust.city))
+from user
+join pizzeria p on p.address_id = user.pizzeria_id
+join address address_piz on address_piz.id = p.address_id
+join user_has_address uha on uha.user_id = user.id
+join address address_cust on address_cust.id = uha.address_id
+where p.id = (select p.id from pizzeria p join user on user.pizzeria_id = p.id where user.id = p_user_id) and user.id = p_user_id)
+where command.user_id = p_user_id;
+
+call p_create_order(p_user_id,(select pizzeria_id from user where id = p_user_id), (select is_on_site_or_online from command where user_id = p_user_id));
+
+ELSE
+
 insert into command_has_product (product_id, command_id, quantity)
-values (p_product_id,(select max(id) from command where user_id = p_user_id), p_quantity);
-update command set is_command_ready = 2, current_datetime = now() where user_id = p_user_id and is_command_ready = 0;
-
-update command set delivery_address = 
-(select if(user.sex = 'M', 
-  concat('M. ', user.first_name, ' ', user.last_name, ' ', a.number, ' ', 
-    a.street_name, ', ', a.zip_code, ', ', a.city), 
-  concat('Mme ', user.first_name, ' ', user.last_name, ' ', a.number, ' ', 
-    a.street_name, ', ', a.zip_code, ', ', a.city))
-from user  
-join user_has_address uha on uha.user_id = user.id 
-join address a on a.id = uha.address_id
-where uha.user_id = p_user_id) where command.user_id = p_user_id;
-
-call p_create_order(p_user_id,(select pizzeria_id from user where id = p_user_id),1,0);
+values (p_product_id,(select max(id) from command where user_id = p_user_id and status_id = 1), p_quantity);
 
 END IF;
 END $$
@@ -139,7 +156,7 @@ CREATE PROCEDURE p_start_preparation(p_command_id int)
 BEGIN
 
 update command 
-set status_id = 3, current_datetime = now() where is_command_ready = 2 and id = p_command_id;
+set status_id = 3, current_datetime = now() where id = p_command_id;
 
 END $$
 DELIMITER ;
@@ -149,12 +166,11 @@ DELIMITER $$
 CREATE PROCEDURE p_end_preparation(p_command_id int)
 BEGIN
 
-update command 
-set status_id = 4 where status_id = 3 and id = p_command_id;
-
-IF (select updated_stock from command where id = p_command_id) = 0 THEN
+IF (select status_id from command where id = p_command_id) = 3 THEN
 call p_substract_stock(p_command_id);
-update command set updated_stock = 1 where id = p_command_id;
+update command 
+set status_id = if(is_on_site_or_online  = 0,  4, 5) where status_id = 3 and id = p_command_id;
+-- set status_id = 4 where status_id = 3 and id = p_command_id;
 END IF;
 
 END $$
@@ -168,7 +184,7 @@ BEGIN
 IF (
 select status_id 
 from command 
-where id = p_command_id) = 4 
+where id = p_command_id) = 3 
 THEN
 
 update pizzeria_has_ingredient phi
@@ -217,63 +233,14 @@ where product_id = p_product_id and command_id = p_command_id and (select status
 END $$
 DELIMITER ;
 
-CREATE VIEW v_details_preparation AS 
-select user_id user_id, 
-product.name 'nom du produit', 
-quantity 'quantité', 
-recipe recette,
-command_id 'numéro de commande', 
-s.name 'statut de la commande', 
-status_id,
-current_datetime
-from command
-join command_has_product
-on command_has_product.command_id = command.id
-join product
-on product.id = command_has_product.product_id
-join status s
-on s.id = command.status_id
-where status_id = 3 order by current_datetime;
-
-CREATE VIEW v_print_stock AS 
-select distinct ingredient.name ingredient, phi.quantity, pizzeria.id
-from pizzeria_has_ingredient phi
-join pizzeria on phi.pizzeria_id = pizzeria.id
-join ingredient on ingredient.id = phi.ingredient_id;
-
 DELIMITER $$ 
-CREATE PROCEDURE p_print_stock(p_pizzeria_id tinyint)
+CREATE PROCEDURE p_print_stock(p_pizzeria_id int)
 BEGIN
 select * from v_print_stock where id = p_pizzeria_id;
 END $$
 DELIMITER ;
 
--- follow_status :
-CREATE VIEW v_print_status AS 
-select command.id 'N° de commande', 
-     current_datetime, 
-     status.name 'statut de la commande',
-     command.status_id
-from command
-join user on user.id = command.user_id
-join status on status.id = command.status_id;
 
-CREATE VIEW v_print_delivery_informations AS
-select command.delivery_address 'étiquette adresse', command.id 'N° de commande', 
-     DATE_FORMAT(current_datetime, '%d-%m-%Y') 'date de la commande', 
-       status.name 'statut de la commande'
-from command
-join user on user.id = command.user_id
-join status on status.id = command.status_id
-where status_id = 4 and command.id = 5 order by command.current_datetime;
-
-DELIMITER $$ 
-CREATE PROCEDURE p_print_waiting_orders()
-BEGIN
-update command set status_id = 2 where is_command_ready = 2 and status_id = 1;
-select * from v_print_status where status_id = 2 order by current_datetime;
-END $$
-DELIMITER ;
 
 -- starting preparation
 DELIMITER $$ 
@@ -282,10 +249,11 @@ CREATE PROCEDURE p_start_delivery(p_command_id int)
 BEGIN
 
 update command 
-set status_id = 5, current_datetime = now() where id = p_command_id;
+set status_id = 6, current_datetime = now() where id = p_command_id;
 
 END $$
 DELIMITER ;
+
 
 -- prepared command, update statut ready to delivery
 DELIMITER $$ 
@@ -293,21 +261,24 @@ CREATE PROCEDURE p_end_delivery(p_command_id int)
 BEGIN
 
 update command 
-set status_id = 6 where status_id = 5 and id = p_command_id;
-
-END $$
-DELIMITER ;(p_command_id int)
-BEGIN
-
-update command 
-set status_id = 5, current_datetime = now() where id = p_command_id;
+set status_id = 7 where status_id = 6 and id = p_command_id;
 
 END $$
 DELIMITER ;
 
+-- DELIMITER $$ 
+-- CREATE PROCEDURE wtf(p_command_id int)
+-- BEGIN
+
+-- update command 
+-- set status_id = 5, current_datetime = now() where id = p_command_id;
+
+-- END $$
+-- DELIMITER ;
+
 -- command detail by command id
 DELIMITER $$ 
-CREATE PROCEDURE p_command_detail(p_command_id tinyint)
+CREATE PROCEDURE p_command_detail(p_command_id int)
 BEGIN
 select user_id 'identifiant utilisateur', 
   product.name produit, 
@@ -336,7 +307,7 @@ DELIMITER ;
 
 -- command bill or detail for delivery
 DELIMITER $$ 
-CREATE PROCEDURE p_command_bill(p_command_id tinyint)
+CREATE PROCEDURE p_command_bill(p_command_id int)
 BEGIN
 select uha.user_id 'identifiant utilisateur', 
   user.first_name, 
@@ -369,3 +340,65 @@ select uha.user_id 'identifiant utilisateur',
   where command_id = p_command_id;
 END $$
 DELIMITER ;
+
+DELIMITER $$ 
+CREATE PROCEDURE p_delivery_info(p_command_id int)
+BEGIN
+
+select * from v_print_delivery_informations where id_de_commande = p_command_id and status_id in (5,6,7);
+
+END $$
+DELIMITER ;
+
+-- ----------------------------------------------------------------------------
+-- Create views
+-- ----------------------------------------------------------------------------
+
+CREATE VIEW v_details_preparation AS 
+select user_id user_id, 
+product.name 'nom du produit', 
+quantity 'quantité', 
+recipe recette,
+command_id 'numéro de commande', 
+s.name 'statut de la commande', 
+status_id,
+current_datetime
+from command
+join command_has_product
+on command_has_product.command_id = command.id
+join product
+on product.id = command_has_product.product_id
+join status s
+on s.id = command.status_id
+where status_id = 3 order by current_datetime;
+
+CREATE VIEW v_print_stock AS 
+select distinct ingredient.name ingredient, phi.quantity, pizzeria.id
+from pizzeria_has_ingredient phi
+join pizzeria on phi.pizzeria_id = pizzeria.id
+join ingredient on ingredient.id = phi.ingredient_id;
+
+
+-- follow_status -------------------------------------------
+CREATE VIEW v_print_status AS 
+select command.id 'N° de commande', 
+     current_datetime, 
+     status.name 'statut de la commande',
+     command.status_id
+from command
+join user on user.id = command.user_id
+join status on status.id = command.status_id;
+
+
+CREATE VIEW v_print_waiting_orders AS 
+select * from v_print_status where status_id = 2 order by current_datetime;
+
+-- delivery informations -----------------------------------
+CREATE VIEW v_print_delivery_informations AS
+select command.delivery_address 'étiquette adresse', command.id id_de_commande, 
+     DATE_FORMAT(current_datetime, '%d-%m-%Y') 'date de la commande', 
+       status.name 'statut de la commande',
+       status_id
+from command
+join user on user.id = command.user_id
+join status on status.id = command.status_id;

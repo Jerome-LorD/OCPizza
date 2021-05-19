@@ -5,6 +5,12 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,N
 -- -----------------------------------------------------
 -- Schema ocpizza
 -- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Schema ocpizza
+-- -----------------------------------------------------
+DROP DATABASE IF EXISTS `ocpizza` ;
+
 CREATE SCHEMA IF NOT EXISTS `ocpizza` DEFAULT CHARACTER SET UTF8MB4 ;
 USE `ocpizza` ;
 
@@ -37,6 +43,7 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`pizzeria` (
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
+
 -- -----------------------------------------------------
 -- Table `ocpizza`.`user`
 -- -----------------------------------------------------
@@ -45,11 +52,9 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`user` (
   `sex` CHAR(1) NULL,
   `last_name` VARCHAR(100) NOT NULL,
   `first_name` VARCHAR(100) NOT NULL,
-  `email` VARCHAR(255) NOT NULL,
   `phone_number` VARCHAR(10) NOT NULL,
   `pizzeria_id` INT NOT NULL,
   PRIMARY KEY (`id`, `pizzeria_id`),
-  UNIQUE INDEX `email_UNIQUE` (`email` ASC) VISIBLE,
   UNIQUE INDEX `phone_number_UNIQUE` (`phone_number` ASC) VISIBLE,
   INDEX `fk_user_pizzeria1_idx` (`pizzeria_id` ASC) VISIBLE,
   CONSTRAINT `fk_user_pizzeria1`
@@ -68,6 +73,7 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`role` (
   `name` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `ocpizza`.`user_role`
@@ -107,10 +113,11 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `ocpizza`.`product` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(45) NULL,
-  `price` DECIMAL(5, 2) NULL,
+  `price` DECIMAL(5,2) NULL,
   `recipe` TEXT NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `ocpizza`.`status`
@@ -129,11 +136,11 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`command` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `current_datetime` DATETIME NULL DEFAULT (now()),
   `delivery_address` TEXT NULL,
-  `is_command_ready` BOOLEAN,
-  `updated_stock` BOOLEAN DEFAULT 0,
+  `total_amount` DECIMAL NULL,
+  `is_on_site_or_online` BOOLEAN,
   `pizzeria_id` INT NOT NULL,
   `user_id` INT NOT NULL,
-  `status_id` INT NOT NULL,
+  `status_id` INT NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`, `pizzeria_id`, `user_id`, `status_id`),
   INDEX `fk_command_pizzeria1_idx` (`pizzeria_id` ASC) VISIBLE,
   INDEX `fk_command_user1_idx` (`user_id` ASC) VISIBLE,
@@ -154,6 +161,7 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`command` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `ocpizza`.`user_has_address`
@@ -194,6 +202,7 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`payment` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `ocpizza`.`product_has_ingredient`
@@ -240,6 +249,7 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`pizzeria_has_ingredient` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+
 -- -----------------------------------------------------
 -- Table `ocpizza`.`command_has_product`
 -- -----------------------------------------------------
@@ -281,6 +291,24 @@ CREATE TABLE IF NOT EXISTS `ocpizza`.`pizzeria_has_product` (
   CONSTRAINT `fk_pizzeria_has_product_product1`
     FOREIGN KEY (`product_id`)
     REFERENCES `ocpizza`.`product` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `ocpizza`.`email`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `ocpizza`.`email` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `email` VARCHAR(255) NULL,
+  `user_id` INT NOT NULL,
+  PRIMARY KEY (`id`, `user_id`),
+  INDEX `fk_email_user1_idx` (`user_id` ASC) VISIBLE,
+  UNIQUE INDEX `email_UNIQUE` (`email` ASC) VISIBLE,
+  CONSTRAINT `fk_email_user1`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `ocpizza`.`user` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
