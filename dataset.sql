@@ -266,16 +266,6 @@ set status_id = 7 where status_id = 6 and id = p_command_id;
 END $$
 DELIMITER ;
 
--- DELIMITER $$ 
--- CREATE PROCEDURE wtf(p_command_id int)
--- BEGIN
-
--- update command 
--- set status_id = 5, current_datetime = now() where id = p_command_id;
-
--- END $$
--- DELIMITER ;
-
 -- command detail by command id
 DELIMITER $$ 
 CREATE PROCEDURE p_command_detail(p_command_id int)
