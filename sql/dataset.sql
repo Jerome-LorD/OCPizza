@@ -284,7 +284,7 @@ select user_id 'identifiant utilisateur',
     join product
     on product.id = command_has_product.product_id
      where command_id = p_command_id
-    ) 'prix total de la commande', is_command_ready from command
+    ) 'prix total de la commande' from command
 join command_has_product
 on command_has_product.command_id = command.id
 join product

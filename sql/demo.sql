@@ -24,7 +24,7 @@ select * from v_print_status where status_id = 2 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- Commande sur place (avec le nom du caissier et l'adresse de la pizzeria)
+-- 3. Commande sur place (avec le nom du caissier et l'adresse de la pizzeria)
 START TRANSACTION;
 call p_fill_order(4, 4, 1, 0);
 call p_fill_order(4, 1, 2, 0);
@@ -33,31 +33,30 @@ call p_fill_order(4, 2, 1, 1);
 select * from v_print_status where status_id = 2 order by current_datetime;
 COMMIT;
 
--- 3. modification d'une commande -> params : command_id, product_id, new_product_id, quantity:
+-- 4. modification d'une commande -> params : command_id, product_id, new_product_id, quantity
 START TRANSACTION;
 call p_modify_order(4, 3, 2, 2);
 call p_command_detail(4);
 
-call p_print_waiting_orders();
 select * from v_print_status where status_id = 2 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 4. Nouveau client sur le pdv1 + Nouvelle commande + Annulation
+-- 5. Nouveau client sur le pdv1 + Nouvelle commande + Annulation
 START TRANSACTION;
 CALL p_create_user("F","Roberts","Julia","julia-roberts@roberts.com","0706040303",1,1);
 CALL p_create_address(17,"chemin de la grande rue","Lyon","69004");
 
 call p_fill_order(9, 1, 1, 1);
 
-call p_print_waiting_orders(); -- ici on doit voir les 3 commandes
+select * from v_print_status where status_id = 2 order by current_datetime;
 
-call p_cancel_order(8); -- c'est la commande n° 8
-call p_print_waiting_orders(); -- et ici 2 deux 1eres (normalement)
+call p_cancel_order(9); -- commande 9
+select * from v_print_status where status_id = 2 order by current_datetime; 
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 5-1. Affichage stock + activation de la prépa + affichage du détail de la commande à préparer
+-- 6-1. Affichage stock + activation de la prépa + affichage du détail de la commande à préparer
 START TRANSACTION;
 select * from v_print_status where status_id = 2 order by current_datetime;
 call p_print_stock(1); -- pdv1
@@ -67,7 +66,7 @@ select * from v_print_status where status_id = 3 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 5-2. Affichage stock + activation de la prépa + affichage du détail de la commande à préparer
+-- 6-2. Affichage stock + activation de la prépa + affichage du détail de la commande à préparer
 START TRANSACTION;
 select * from v_print_status where status_id = 2 order by current_datetime;
 call p_print_stock(1); -- pdv1
@@ -77,7 +76,7 @@ select * from v_print_status where status_id = 3 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 5-3. Affichage stock + activation de la prépa + affichage du détail de la commande à préparer
+-- 6-3. Affichage stock + activation de la prépa + affichage du détail de la commande à préparer
 -- à remettre sur place
 START TRANSACTION;
 select * from v_print_status where status_id = 2 order by current_datetime;
@@ -87,7 +86,7 @@ select * from v_details_preparation;
 select * from v_print_status where status_id = 3 order by current_datetime;
 COMMIT;
 
--- 6-1. affichage du statut des commandes + fin de préparation + affichage des stocks
+-- 7-1. affichage du statut des commandes + fin de préparation + affichage des stocks
 START TRANSACTION;
 select * from v_print_status where status_id = 3 order by current_datetime;
 call p_end_preparation(4);
@@ -96,7 +95,7 @@ select * from v_print_status where status_id = 5 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 6-2. affichage du statut des commandes + fin de préparation + affichage des stocks
+-- 7-2. affichage du statut des commandes + fin de préparation + affichage des stocks
 START TRANSACTION;
 select * from v_print_status where status_id = 3 order by current_datetime;
 call p_end_preparation(5);
@@ -105,7 +104,7 @@ select * from v_print_status where status_id = 5 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 6-3. affichage du statut des commandes + fin de préparation + affichage des stocks
+-- 7-3. affichage du statut des commandes + fin de préparation + affichage des stocks
 -- à remettre sur place (status_id = 4)
 START TRANSACTION;
 select * from v_print_status where status_id = 3 order by current_datetime;
@@ -116,10 +115,7 @@ select * from v_print_status where status_id = 4 or status_id = 5 order by curre
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 7-0 service sur place, changement de statut "servie" + "payée"
--- ---------------------------------------------------------------------------------
-
--- 7-1. affichage du statut des commandes + affichage des détails pour livraison + départ pour livraison
+-- 8-1. affichage du statut des commandes + affichage des détails pour livraison + départ pour livraison
 START TRANSACTION;
 select * from v_print_status where status_id = 5 order by current_datetime;
 call p_delivery_info(5);
@@ -128,7 +124,7 @@ select * from v_print_status where status_id = 6 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 7-2. affichage du statut des commandes + affichage des détails pour livraison + départ pour livraison
+-- 8-2. affichage du statut des commandes + affichage des détails pour livraison + départ pour livraison
 START TRANSACTION;
 select * from v_print_status where status_id = 5 order by current_datetime;
 call p_delivery_info(4); -- Attention, ici, plus d'affichage sur le 2e
@@ -137,7 +133,7 @@ select * from v_print_status where status_id = 6 order by current_datetime;
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 8-1. livraison effectuée + affichage du status des commandes livrées
+-- 9-1. livraison effectuée + affichage du status des commandes livrées
 START TRANSACTION;
 select * from v_print_status where status_id = 6 order by current_datetime;
 call p_end_delivery(5);
@@ -145,7 +141,7 @@ call p_delivery_info(5);
 COMMIT;
 -- ---------------------------------------------------------------------------------
 
--- 8-2. livraison effectuée + affichage du status des commandes livrées
+-- 9-2. livraison effectuée + affichage du status des commandes livrées
 START TRANSACTION;
 select * from v_print_status where status_id = 6 order by current_datetime;
 call p_end_delivery(4);
