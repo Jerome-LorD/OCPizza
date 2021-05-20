@@ -127,7 +127,7 @@ COMMIT;
 -- 8-2. affichage du statut des commandes + affichage des détails pour livraison + départ pour livraison
 START TRANSACTION;
 select * from v_print_status where status_id = 5 order by current_datetime;
-call p_delivery_info(4); -- Attention, ici, plus d'affichage sur le 2e
+call p_delivery_info(4); 
 call p_start_delivery(4);
 select * from v_print_status where status_id = 6 order by current_datetime;
 COMMIT;
